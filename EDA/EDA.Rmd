@@ -1,0 +1,36 @@
+---
+title: "EDA"
+author: "Junhua Tan"
+date: "5/31/2020"
+output: html_document
+---
+
+
+## Processing Data
+
+```{r}
+# Load libraries
+library(tidyverse)
+library(janitor)
+library(corrplot)
+library(lubridate)
+```
+
+```{r}
+train <- read_csv("train.csv") 
+test <- read_csv("test.csv")
+
+eda <- sample_frac(train, 0.20)
+```
+
+
+## Explore data
+
+```{r}
+eda %>% 
+  dplyr::select(-addr_state, -application_type, -earliest_cr_line, -emp_length, -emp_title, -grade, -home_ownership, -initial_list_status, -last_credit_pull_d, -purpose, -sub_grade, -term, -verification_status) %>% 
+  cor() %>% 
+  corrplot()
+```
+
+

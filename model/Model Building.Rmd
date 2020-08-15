@@ -1,0 +1,90 @@
+---
+title: "Model Building"
+author: "Junhua Tan"
+date: "5/31/2020"
+output: html_document
+---
+
+## Read Data
+
+```{r}
+# Load libraries
+library(tidyverse)
+library(janitor)
+library(corrplot)
+library(lubridate)
+```
+
+```{r}
+train <- read_csv("train.csv",
+                 col_types = cols(
+                   acc_now_delinq = col_factor(),
+                   addr_state = col_factor(),
+                   application_type = col_factor(),
+                   earliest_cr_line = col_datetime(format = "%b-%Y"),
+                   emp_length = col_factor(),
+                   emp_title = col_factor(),
+                   grade = col_factor(ordered = T),
+                   home_ownership = col_factor(),
+                   initial_list_status = col_factor(),
+                   last_credit_pull_d = col_datetime(format = "%b-%Y"),
+                   num_tl_120dpd_2m = col_factor(levels = c("0", "1", "2")),
+                   num_tl_30dpd = col_factor(),
+                   purpose = col_factor(),
+                   sub_grade = col_factor(ordered = T),
+                   term = col_factor(),
+                   verification_status = col_factor()
+                   )) %>%
+  mutate(
+    day_diff = as.numeric(last_credit_pull_d - earliest_cr_line),
+    last_credit_pull_from_now = as.numeric(ymd("2020-06-01") - as.Date(last_credit_pull_d)),
+    day_from_opening = as.numeric(ymd("2020-06-01") - as.Date(earliest_cr_line))
+  ) %>% 
+  select(-id, -last_credit_pull_d, -earliest_cr_line)
+  
+test <- read_csv("test.csv",
+                 col_types = cols(
+                   acc_now_delinq = col_factor(),
+                   addr_state = col_factor(),
+                   application_type = col_factor(),
+                   earliest_cr_line = col_datetime(format = "%b-%Y"),
+                   emp_length = col_factor(),
+                   emp_title = col_factor(),
+                   grade = col_factor(ordered = T),
+                   home_ownership = col_factor(),
+                   initial_list_status = col_factor(),
+                   last_credit_pull_d = col_datetime(format = "%b-%Y"),
+                   num_tl_120dpd_2m = col_factor(levels = c("0", "1", "2")),
+                   num_tl_30dpd = col_factor(),
+                   purpose = col_factor(),
+                   sub_grade = col_factor(ordered = T),
+                   term = col_factor(),
+                   verification_status = col_factor()
+                   )) %>% 
+  mutate(
+    day_diff = as.numeric(last_credit_pull_d - earliest_cr_line),
+    last_credit_pull_from_now = as.numeric(ymd("2020-06-01") - as.Date(last_credit_pull_d)),
+    day_from_opening = as.numeric(ymd("2020-06-01") - as.Date(earliest_cr_line))
+  ) %>% 
+  select(-last_credit_pull_d, -earliest_cr_line)
+```
+
+## Model Building
+
+### Linear Regression
+
+```{r}
+mod1 <- lm(money_made_inv ~ out_prncp_inv + day_diff + last_credit_pull_from_now + day_from_opening, data = train)
+summary(mod1)
+pred_probs1 <- predict(mod1, test)
+summary(pred_probs1)
+```
+
+## Submission
+
+```{r}
+out <- tibble(Id = test$id,
+              Predicted = as.integer(pred_probs1))
+
+write_csv(out, "test_predictions.csv")
+```
