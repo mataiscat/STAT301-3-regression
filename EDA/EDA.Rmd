@@ -17,14 +17,22 @@ library(lubridate)
 ```
 
 ```{r}
-train <- read_csv("train.csv") 
-test <- read_csv("test.csv")
+setwd("~/Documents/GitHub/STAT301-3-regression")
+train <- read_csv("data/train.csv") 
+test <- read_csv("data/test.csv")
 
 eda <- sample_frac(train, 0.20)
 ```
 
 
 ## Explore data
+
+```{r}
+train %>% 
+  summarise_all(funs(
+    sum(is.na(.)) / length(.)
+  ))
+```
 
 ```{r}
 eda %>% 
