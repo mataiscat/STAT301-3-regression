@@ -1,5 +1,7 @@
 # Predict the money made on loans issued by a bank - STAT301-3 Regression Competition
 
+![](image/loan-application.jpg)<!-- -->
+
 This GitHub Repo is a place to present my work for Northwestern University STAT301-3 (Spring 2020) regression competition.
 
 ### Data Source: [STAT 301-3 Regression 2020: Bank Loans (Kaggle)](https://www.kaggle.com/c/nustat3013reg)
