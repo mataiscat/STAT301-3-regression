@@ -21,6 +21,7 @@ setwd("~/Documents/GitHub/STAT301-3-regression")
 train <- read_csv("data/train.csv") 
 test <- read_csv("data/test.csv")
 
+set.seed(23716)
 eda <- sample_frac(train, 0.20)
 ```
 
@@ -41,4 +42,9 @@ eda %>%
   corrplot()
 ```
 
+```{r}
+eda %>% 
+  ggplot(aes(log(out_prncp_inv))) +
+  geom_histogram()
+```
 
