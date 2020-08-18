@@ -1,9 +1,10 @@
 # Predict the money made on loans issued by a bank - STAT301-3 Regression Competition
 
 This GitHub Repo is a place to present my work for Northwestern University STAT301-3 (Spring 2020) regression competition.
-![](image/loan-application.jpg)<!-- -->
 
 ### Data Source: [STAT 301-3 Regression 2020: Bank Loans (Kaggle)](https://www.kaggle.com/c/nustat3013reg)
+
+![](image/loan-application.jpg)<!-- -->
 
 This data was published on Kaggle (2020) for the purpose of employ the skills and techniques students have learned in class and build a model to predict the amount of money made on loans issued by a bank. To collect this data, I will simply download from the Kaggle website which contains a 2 csv files of training and testing datasets with ~8k and ~4k observations of 35 attributes. The training data consists of loan applications, including information on the applicants themselves, as well as the amount of money made off of each application. Fortunately, the data has no missing values needed to be handled. The target variable for this competition is `money_made_inv`, which is the money made by the bank on a loan. By doing this project, I hope to explore how banks make money from loans and what information or qualities about the applicants in the loan application is more likely to result in more profits for the banks.
 
