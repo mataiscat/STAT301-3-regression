@@ -1,13 +1,12 @@
 # Loading package(s)
-library(xgboost)
 library(tidyverse)
 library(onehot)
 library(lubridate)
 
+# Set seed
 set.seed(1235)
 
-
-train <- read_csv("train.csv",
+train <- read_csv("data/train.csv",
                   col_types = cols(
                     acc_now_delinq = col_factor(levels = c("0", "1", "2")),
                     addr_state = col_factor(),
@@ -40,7 +39,7 @@ train <- read_csv("train.csv",
          day_from_opening = as.numeric(ymd("2020-06-01") - as.Date(earliest_cr_line))) %>% 
   select(-last_credit_pull_d, -earliest_cr_line)
 
-test <- read_csv("test.csv",
+test <- read_csv("data/test.csv",
                  col_types = cols(
                    acc_now_delinq = col_factor(levels = c("0", "1", "2")),
                    addr_state = col_factor(),
@@ -72,106 +71,3 @@ test <- read_csv("test.csv",
          last_credit_pull_from_now = as.numeric(ymd("2020-06-01") - as.Date(last_credit_pull_d)),
          day_from_opening = as.numeric(ymd("2020-06-01") - as.Date(earliest_cr_line))) %>% 
   select(-last_credit_pull_d, -earliest_cr_line)
-
-# Remove information about the target variable from the training data
-train_targetrm <- train %>%
-  dplyr::select(-money_made_inv, -id)
-
-train_label <- train %>% 
-  select(money_made_inv) %>% 
-  as_vector()
-
-# select just the numeric columns
-trainInfo_numeric <- train_targetrm %>%
-  select_if(is.numeric) # select remaining numeric columns
-
-trainInfo_factor <- train_targetrm %>%
-  select_if(is.factor) # select remaining numeric columns
-
-# convert categorical factor into one-hot encoding
-acc_now_delinq <- model.matrix(~acc_now_delinq-1,train)
-#addr_state <- model.matrix(~addr_state-1,train)
-application_type <- model.matrix(~application_type-1,train)
-emp_length <- model.matrix(~emp_length-1,train)
-#emp_title <- model.matrix(~emp_title-1,train)
-grade <- model.matrix(~grade-1,train)
-home_ownership <- model.matrix(~home_ownership-1,train)
-initial_list_status <- model.matrix(~initial_list_status-1,train)
-num_tl_120dpd_2m <- model.matrix(~num_tl_120dpd_2m-1,train)
-num_tl_30dpd <- model.matrix(~num_tl_30dpd-1,train)
-purpose <- model.matrix(~purpose-1,train)
-#sub_grade <- model.matrix(~sub_grade-1,train)
-term <- model.matrix(~term-1,train)
-verification_status <- model.matrix(~verification_status-1,train)
-
-# add our one-hot encoded variable and convert the dataframe into a matrix
-trainInfo_numeric <- cbind(trainInfo_numeric, acc_now_delinq, application_type, emp_length,
-                           grade, home_ownership, initial_list_status, num_tl_120dpd_2m,
-                           num_tl_30dpd, purpose, term, verification_status)
-
-trainInfo_matrix <- data.matrix(trainInfo_numeric)
-
-# get the numb 70/30 training test split
-numberOfTrainingSamples <- round(length(train_label) * .7)
-
-# training data
-train_data <- trainInfo_matrix[1:numberOfTrainingSamples,]
-train_labels <- train_label[1:numberOfTrainingSamples]
-
-# testing data
-test_data <- trainInfo_matrix[-(1:numberOfTrainingSamples),]
-test_labels <- train_label[-(1:numberOfTrainingSamples)]
-
-# Convert the cleaned dataframe to a dmatrix
-
-# put our testing & training data into two seperates Dmatrixs objects
-dtrain <- xgb.DMatrix(data = train_data, label= train_labels)
-dtest <- xgb.DMatrix(data = test_data, label= test_labels)
-
-# Training our model
-
-# train a model using our training data
-model <- xgboost(data = dtrain, # the data   
-                 nround = 550, # max number of boosting iterations,
-                 eta = 0.05,
-                 subsample = 0.6,
-                 min_child_weight = 3,
-                 num_parallel_tree = 4,
-                 max_depth = 5,
-                 objective = "reg:linear")  # the objective function
-
-# train-rmse: 27.769 (default parameters with 100 nrounds)
-# train-rmse: 24.174 (300 nround and 0.1 eta)
-# train-rmse: 32.560 (300 nround and 0.1 eta + 0.5 subsample)
-# train-rmse: 32.560 (300 nround and 0.1 eta + 0.5 subsample)
-# train-rmse: 27.399 (600 nround and 0.05 eta + 0.5 subsample)
-# train-rmse: 59.559 (600 nround and 0.05 eta + 0.5 subsample + 3 min_child_weight)
-# train-rmse: 65.360 (600 nround and 0.05 eta + 0.5 subsample + 3 min_child_weight + 4 num_parallel_tree + 5 max_depth)
-# train-rmse: 60.504 (650 nround and 0.05 eta + 0.5 subsample + 3 min_child_weight + 4 num_parallel_tree + 5 max_depth)
-# train-rmse: 74.800 (550 nround and 0.05 eta + 0.5 subsample + 3 min_child_weight + 4 num_parallel_tree + 5 max_depth)
-
-# generate predictions for our held-out testing data
-pred <- predict(model, dtest)
-
-# get & print the regression error
-err <- sqrt(mean((pred - test_labels)^2))
-print(paste("test-error=", err))
-# test-error: 1473.180
-# test-error: 1396.703
-# test-error: 1313.881
-# test-error: 1271.815
-# test-error: 1218.544
-# test-error: 1190.108
-# test-error: 1207.910
-# test-error: 1202.600
-
-# Analyze results
-feature_names <- colnames(trainInfo_numeric)
-importance <- xgb.importance(feature_names, model)
-
-
-# submission
-out <- tibble(Id = test$id,
-              Predicted = as.character(pred))
-
-write_csv(out, "test_predictions_xgboost.csv")
