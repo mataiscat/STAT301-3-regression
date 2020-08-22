@@ -4,9 +4,7 @@ library(tidyverse)
 library(onehot)
 library(lubridate)
 
-
 set.seed(1235)
-
 
 train <- read_csv("train.csv",
                        col_types = cols(
@@ -187,17 +185,8 @@ model <- xgboost(data = dtrain, # the data
                  max_depth = 5,
                  objective = "reg:linear")  # the objective function
 
-# train-rmse: 27.769 (with cv)
-# train-rmse: 94.593 (with entire train dataset and default parameters)
-
 # generate predictions for our held-out testing data
 pred <- predict(model, dtest)
-
-# get & print the regression error
-err <- sqrt(mean((pred - test_labels)^2))
-print(paste("test-error=", err))
-
-# test-error: 1473.180
 
 # submission
 out <- tibble(Id = test$id,

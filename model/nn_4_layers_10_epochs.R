@@ -1,41 +1,36 @@
+# Load data
+source("load_data.R")
+
+# Load libraies
 library(keras)
-library(tidyverse)
 library(onehot)
 library(tensorflow)
 
-
 set.seed(12345)
 
-
-train_data <- read_csv('data/train.csv') %>%
-  mutate_if(is_character, as_factor)
-test_data <- read_csv('data/test.csv')
-id <- test_data$id
-
 #one hot encode
-ohe_rules <- train_data %>% 
-  select(-earliest_cr_line, -money_made_inv, -id) %>% 
+ohe_rules <- train %>% 
+  select(-money_made_inv, -id, -addr_state, -emp_length, -emp_title, -purpose, -sub_grade) %>% 
   onehot()
 
-train_data_ohe <- train_data %>%
-  select(-earliest_cr_line, -money_made_inv, -id) %>% 
+train_ohe <- train %>%
+  select(-money_made_inv, -id, -addr_state, -emp_length, -emp_title, -purpose, -sub_grade) %>% 
   predict(ohe_rules, data = .)
 
-test_data_ohe <- test_data %>%
-  select(-earliest_cr_line) %>% 
+test_ohe <- test %>%
+  select(-id, -addr_state, -emp_length, -emp_title, -purpose, -sub_grade) %>% 
   predict(ohe_rules, data = .)
 
-train_targets <- train_data %>% 
-  pull(money_made_inv) 
+train_targets <- train %>% 
+  pull(money_made_inv)
 
+means_train_data <- apply(train_ohe, 2, mean)
+std_train_data <- apply(train_ohe, 2, sd)
 
-means_train_data <- apply(train_data_ohe, 2, mean)
-std_train_data <- apply(train_data_ohe, 2, sd)
+train_data <- scale(train_ohe, center = means_train_data, scale = std_train_data)
+test_data <- scale(test_ohe, center = means_train_data, scale = std_train_data)
 
-train_data <- scale(train_data_ohe, center = means_train_data, scale = std_train_data)
-test_data <- scale(test_data_ohe, center = means_train_data, scale = std_train_data)
-
-
+use_python("/Users/JunhuaTan/opt/anaconda3/bin/python")
 
 #4 layer nn 10 epochs
 model <- keras_model_sequential() %>% 
@@ -67,10 +62,8 @@ history <- model %>% fit(
   verbose = 0
 )
 
-
 history$metrics$val_mse
 plot(history)
-
 
 nn_pred <- model %>% predict(test_data)
 
