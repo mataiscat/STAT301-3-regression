@@ -2,6 +2,7 @@
 library(tidyverse)
 library(onehot)
 library(lubridate)
+library(janitor)
 
 # Set seed
 set.seed(1235)
@@ -37,7 +38,8 @@ train <- read_csv("data/train.csv",
          day_diff = as.numeric(last_credit_pull_d - earliest_cr_line),
          last_credit_pull_from_now = as.numeric(ymd("2020-06-01") - as.Date(last_credit_pull_d)),
          day_from_opening = as.numeric(ymd("2020-06-01") - as.Date(earliest_cr_line))) %>% 
-  select(-last_credit_pull_d, -earliest_cr_line)
+  select(-last_credit_pull_d, -earliest_cr_line) %>% 
+  clean_names()
 
 test <- read_csv("data/test.csv",
                  col_types = cols(
@@ -70,4 +72,5 @@ test <- read_csv("data/test.csv",
          day_diff = as.numeric(last_credit_pull_d - earliest_cr_line),
          last_credit_pull_from_now = as.numeric(ymd("2020-06-01") - as.Date(last_credit_pull_d)),
          day_from_opening = as.numeric(ymd("2020-06-01") - as.Date(earliest_cr_line))) %>% 
-  select(-last_credit_pull_d, -earliest_cr_line)
+  select(-last_credit_pull_d, -earliest_cr_line) %>% 
+  clean_names()

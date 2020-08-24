@@ -1,5 +1,5 @@
 # Load xgboost setup
-source("xgboost_setup.R")
+source("model/XGBoost/xgboost_setup.R")
 
 set.seed(13281)
 
@@ -16,7 +16,7 @@ model_performance <- tibble(nround = numeric(),
                             test_rmse = numeric())
 
 
-nrounds <- 600
+nrounds <- 400
 eta <- c(0.03, 0.05, 0.07, 0.1)
 subsample <- c(1/3, 0.5, 0.75)
 min_child_weight <- c(1, 2, 3, 4)
@@ -28,14 +28,15 @@ for(et in eta) {
       for(ss in subsample) {
         params = list(eta = et, min_child_weight = mc,
                     max_depth = md, subsample = ss)
-        xgb = xgboost(dtrain, label = train_labels,  nrounds = n, params = params)
         
-        train_rmse = xgb$evaluation_log$train_rmse[n]
+        xgb = xgboost(dtrain, nrounds = nrounds, params = params)
+        
+        train_rmse = xgb$evaluation_log$train_rmse[nrounds]
         pred = predict(xgb, dtest)
         test_rmse = sqrt(mean((pred - test_labels)^2))
         
         model_performance <- model_performance %>% 
-          add_row(nround = n,
+          add_row(nround = nrounds,
                   eta = et,
                   subsample = ss,
                   min_child_weight = mc,
@@ -85,7 +86,7 @@ eta_performance %>%
 model_performance %>% 
   arrange(test_rmse)
 
-# Subsample Ratio
+# Subsample Ratios
 # randomly collected fractions of the training instance to grow trees (prevent overfitting)
 
 subsample <- c(1/3, 0.5, 0.75)
@@ -198,15 +199,16 @@ model_performance %>%
 
 # Training our model
 model <- xgboost(data = dtrain, # the data  
-                 nround = 600, # max number of boosting iterations,
-                 eta = 0.05,
+                 nround = 400, # max number of boosting iterations,
+                 eta = 0.1,
                  subsample = 0.50,
                  min_child_weight = 4,
-                 max_depth = 6,
+                 max_depth = 5,
                  objective = "reg:linear")  # the objective function
 
 # generate predictions for our held-out testing data
 pred <- predict(model, dtest)
+summary(pred)
 
 # get & print the regression error
 err <- sqrt(mean((pred - test_labels)^2))

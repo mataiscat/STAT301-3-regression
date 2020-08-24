@@ -1,5 +1,5 @@
 # Load data
-source("load_data.R")
+source("model/load_data.R")
 
 # Load libraies
 library(keras)

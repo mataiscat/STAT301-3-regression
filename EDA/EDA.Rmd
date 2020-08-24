@@ -10,41 +10,44 @@ output: html_document
 
 ```{r}
 # Load libraries
-library(tidyverse)
-library(janitor)
 library(corrplot)
-library(lubridate)
 ```
 
 ```{r}
 setwd("~/Documents/GitHub/STAT301-3-regression")
-train <- read_csv("data/train.csv") 
-test <- read_csv("data/test.csv")
+source("model/XGBoost/xgboost_setup.R")
+```
 
-set.seed(23716)
-eda <- sample_frac(train, 0.20)
+```{r}
+# split 20% of training data for EDA
+training_data <- train[indicesTrain, ]
+
+fractionEDA <- 0.20
+sampleSizeEDA <- floor(fractionEDA * nrow(training_data))
+
+indicesEDA <- sort(sample(seq_len(nrow(training_data)), size=sampleSizeEDA))
+EDA_data <- training_data[indicesEDA, ]
 ```
 
 
 ## Explore data
 
 ```{r}
-train %>% 
+EDA_data %>% 
   summarise_all(funs(
     sum(is.na(.)) / length(.)
   ))
 ```
 
 ```{r}
-eda %>% 
-  dplyr::select(-addr_state, -application_type, -earliest_cr_line, -emp_length, -emp_title, -grade, -home_ownership, -initial_list_status, -last_credit_pull_d, -purpose, -sub_grade, -term, -verification_status) %>% 
+EDA_data %>% 
+  select_if(is.numeric) %>% 
   cor() %>% 
   corrplot()
 ```
 
 ```{r}
-eda %>% 
-  ggplot(aes(log(out_prncp_inv))) +
+EDA_data %>% 
+  ggplot(aes(money_made_inv)) +
   geom_histogram()
 ```
-
