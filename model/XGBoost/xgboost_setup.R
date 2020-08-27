@@ -22,25 +22,30 @@ trainInfo_factor <- train_targetrm %>%
   select_if(is.factor)
 
 # convert categorical factor into one-hot encoding
-acc_now_delinq <- model.matrix(~acc_now_delinq-1,train)
-#addr_state <- model.matrix(~addr_state-1,train)
+addr_state <- model.matrix(~addr_state-1,train)
 application_type <- model.matrix(~application_type-1,train)
+delinq_2yrs <- model.matrix(~delinq_2yrs-1,train)
 emp_length <- model.matrix(~emp_length-1,train)
-#emp_title <- model.matrix(~emp_title-1,train)
 grade <- model.matrix(~grade-1,train)
 home_ownership <- model.matrix(~home_ownership-1,train)
 initial_list_status <- model.matrix(~initial_list_status-1,train)
 num_tl_120dpd_2m <- model.matrix(~num_tl_120dpd_2m-1,train)
+num_tl_90g_dpd_24m <- model.matrix(~num_tl_90g_dpd_24m-1,train)
 num_tl_30dpd <- model.matrix(~num_tl_30dpd-1,train)
+pub_rec <- model.matrix(~pub_rec-1,train)
+pub_rec_bankruptcies <- model.matrix(~pub_rec_bankruptcies-1,train)
 purpose <- model.matrix(~purpose-1,train)
-#sub_grade <- model.matrix(~sub_grade-1,train)
 term <- model.matrix(~term-1,train)
 verification_status <- model.matrix(~verification_status-1,train)
+delinq <- model.matrix(~delinq-1,train)
+late <- model.matrix(~late-1,train)
 
 # add our one-hot encoded variable
-trainInfo_numeric <- cbind(trainInfo_numeric, acc_now_delinq, application_type, emp_length,
-                           grade, home_ownership, initial_list_status, num_tl_120dpd_2m,
-                           num_tl_30dpd, purpose, term, verification_status)
+trainInfo_numeric <- cbind(trainInfo_numeric, addr_state, application_type, delinq_2yrs,
+                           emp_length, grade, home_ownership, initial_list_status, 
+                           num_tl_120dpd_2m, num_tl_90g_dpd_24m, num_tl_30dpd, pub_rec,
+                           pub_rec_bankruptcies, purpose, term, verification_status,
+                           delinq, late)
 
 # convert the dataframe into a matrix (~3.7 Mb)
 trainInfo_matrix <- data.matrix(trainInfo_numeric)

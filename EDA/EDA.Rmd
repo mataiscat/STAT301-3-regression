@@ -9,29 +9,51 @@ output: html_document
 ## Processing Data
 
 ```{r}
-# Load libraries
+# Loading package(s)
+library(tidyverse)
+library(onehot)
+library(lubridate)
+library(janitor)
+library(dataMaid)
 library(corrplot)
-```
+library(dataMaid)
 
-```{r}
+# Set seed
+set.seed(12352)
+
 setwd("~/Documents/GitHub/STAT301-3-regression")
-source("model/XGBoost/xgboost_setup.R")
+dataset <- read_csv("data/train.csv",
+            col_types = cols(
+              acc_now_delinq = col_factor(levels = c("0", "1", "2")),
+              application_type = col_factor(levels = c("Individual", "Joint App")),
+              earliest_cr_line = col_datetime(format = "%b-%Y"),
+              emp_length = col_factor(levels = c("< 1 year", "1 year", "2 years", "3 years",
+                                                 "4 years", "5 years", "6 years", "7 years",
+                                                 "8 years", "9 years", "10+ years",
+                                                 "n/a", "moving")),
+              grade = col_factor(levels = c("A", "B", "C", "D", "E", "F", "G")),
+              home_ownership = col_factor(levels = c("RENT", "MORTGAGE", "OWN", "ANY")),
+              initial_list_status = col_factor(levels = c("w", "f")),
+              last_credit_pull_d = col_datetime(format = "%b-%Y"),
+              term = col_factor(levels = c("36 months", "60 months")),
+              verification_status = col_factor(levels = c("Verified", "Not Verified",
+                                                          "Source Verified")))
+            )
 ```
 
+
 ```{r}
-# split 20% of training data for EDA
-training_data <- train[indicesTrain, ]
-
 fractionEDA <- 0.20
-sampleSizeEDA <- floor(fractionEDA * nrow(training_data))
+sampleSizeEDA <- floor(fractionEDA * nrow(dataset))
 
-indicesEDA <- sort(sample(seq_len(nrow(training_data)), size=sampleSizeEDA))
-EDA_data <- training_data[indicesEDA, ]
+indicesEDA <- sort(sample(seq_len(nrow(dataset)), size=sampleSizeEDA))
+EDA_data <- dataset[indicesEDA, ]
 ```
 
 
 ## Explore data
 
+#### Check Missing Values
 ```{r}
 EDA_data %>% 
   summarise_all(funs(
@@ -39,6 +61,7 @@ EDA_data %>%
   ))
 ```
 
+#### Check Co-linearity
 ```{r}
 EDA_data %>% 
   select_if(is.numeric) %>% 
@@ -47,7 +70,307 @@ EDA_data %>%
 ```
 
 ```{r}
+# Make a codebook containing these variable description (already made)
+#makeCodebook(train, replace = TRUE)
+```
+
+### Target Variable
+```{r}
 EDA_data %>% 
   ggplot(aes(money_made_inv)) +
+  geom_histogram()
+
+# Log-scaling target variable -> distribution is normalized
+EDA_data %>% 
+  ggplot(aes(log(money_made_inv))) +
+  geom_histogram()
+```
+
+### Preditors
+
+```{r}
+EDA_data %>% 
+  ggplot(aes(acc_now_delinq)) +
+  geom_bar()
+
+EDA_data %>%
+  mutate(acc_now_delinq = ifelse(acc_now_delinq == 0, 0, "1+")) %>% 
+  ggplot(aes(acc_now_delinq)) +
+  geom_bar()
+```
+
+```{r}
+EDA_data %>% 
+  ggplot(aes(as_factor(acc_open_past_24mths))) +
+  geom_bar()
+
+EDA_data %>%
+  mutate(acc_open_past_24mths = ifelse(acc_open_past_24mths > 10, "11+", acc_open_past_24mths),
+         acc_open_past_24mths = as.ordered(acc_open_past_24mths)) %>%
+  ggplot(aes(acc_open_past_24mths)) +
+  geom_bar()
+```
+
+```{r}
+EDA_data %>% 
+  ggplot(aes(addr_state)) +
+  geom_bar()
+  
+states <- c("CA", "NY", "TX", "FL", "NJ", "IL", "MI")
+  
+EDA_data %>%
+  mutate(addr_state = as.factor(if_else(addr_state %in% states, addr_state, as.character("Other States")))) %>% 
+  ggplot(aes(addr_state)) +
+  geom_bar()
+```
+
+```{r}
+EDA_data %>% 
+  ggplot(aes(annual_inc)) +
+  geom_histogram()
+
+# Log-scaling this variable -> distribution is normalized
+EDA_data %>% 
+  ggplot(aes(log(annual_inc))) +
+  geom_histogram()
+```
+
+```{r}
+EDA_data %>% 
+  ggplot(aes(avg_cur_bal)) +
+  geom_histogram()
+
+# Z-score scaling
+EDA_data %>% 
+  mutate(avg_cur_bal = ifelse(avg_cur_bal > 100000, 100000, avg_cur_bal),
+         avg_cur_bal = (avg_cur_bal - mean(avg_cur_bal))/sd(avg_cur_bal)) %>% 
+  ggplot(aes(avg_cur_bal)) +
+  geom_histogram()
+
+# Scaling to [0,1]
+EDA_data %>% 
+  mutate(avg_cur_bal = ifelse(avg_cur_bal > 100000, 100000, avg_cur_bal),
+         avg_cur_bal = (avg_cur_bal - min(avg_cur_bal))/(max(avg_cur_bal) - min(avg_cur_bal))) %>% 
+  ggplot(aes(avg_cur_bal)) +
+  geom_histogram()
+```
+
+```{r}
+EDA_data %>% 
+  ggplot(aes(bc_util)) +
+  geom_histogram()
+
+# Z-score scaling
+EDA_data %>% 
+  mutate(bc_util = (bc_util - mean(bc_util))/sd(bc_util)) %>% 
+  ggplot(aes(bc_util)) +
+  geom_histogram()
+
+# Scaling to [0,1]
+EDA_data %>% 
+  mutate(bc_util = ifelse(bc_util >= 100, 100, bc_util),
+         bc_util = (bc_util - min(bc_util))/(max(bc_util) - min(bc_util))) %>% 
+  ggplot(aes(bc_util)) +
+  geom_histogram()
+```
+
+```{r}
+EDA_data %>% 
+  ggplot(aes(as_factor(delinq_2yrs))) +
+  geom_bar()
+
+EDA_data %>%
+  mutate(delinq_2yrs = as.ordered(ifelse(delinq_2yrs > 2, "3+", delinq_2yrs))) %>% 
+  ggplot(aes(delinq_2yrs)) +
+  geom_bar()
+```
+
+```{r}
+EDA_data %>% 
+  ggplot(aes(as_factor(delinq_amnt))) +
+  geom_bar()
+
+EDA_data %>%
+  mutate(delinq = as.factor(ifelse(delinq_amnt > 0, "1", delinq_amnt))) %>% 
+  ggplot(aes(delinq)) +
+  geom_bar()
+```
+
+```{r}
+EDA_data %>% 
+  ggplot(aes(dti)) +
+  geom_histogram()
+
+# Z-score scaling
+EDA_data %>% 
+  mutate(dti = ifelse(dti > 40, 40, dti),
+         dti = (dti - mean(dti))/sd(dti)) %>% 
+  ggplot(aes(dti)) +
+  geom_histogram()
+
+# Scaling to [0,1]
+EDA_data %>% 
+  mutate(dti = ifelse(dti > 40, 40, dti),
+         dti = (dti - min(dti))/(max(dti) - min(dti))) %>% 
+  ggplot(aes(dti)) +
+  geom_histogram()
+```
+
+```{r}
+EDA_data %>% 
+  ggplot(aes(emp_length)) +
+  geom_bar()
+
+two_years <- c("< 1 year", "1 year", "2 years")
+five_years <- c("3 years", "4 years", "5 years")
+nine_years <- c("6 years", "7 years", "8 years", "9 years")
+
+EDA_data %>%
+  mutate(emp_length = if_else(emp_length %in% two_years, "<= 2 years", 
+                              as.character(emp_length)),
+         emp_length = if_else(emp_length %in% five_years, "<= 5 years", 
+                              as.character(emp_length)),
+         emp_length = if_else(emp_length %in% nine_years, "<= 9 years", 
+                              as.character(emp_length)),
+         emp_length = as.factor(emp_length)) %>% 
+  ggplot(aes(emp_length)) +
+  geom_bar()
+```
+
+```{r}
+EDA_data %>% 
+  ggplot(aes(int_rate)) +
+  geom_histogram()
+
+# Z-score scaling
+EDA_data %>% 
+  mutate(int_rate = (int_rate - mean(int_rate))/sd(int_rate)) %>% 
+  ggplot(aes(int_rate)) +
+  geom_histogram()
+
+# Scaling to [0,1]
+EDA_data %>% 
+  mutate(int_rate = (int_rate - min(int_rate))/(max(int_rate) - min(int_rate))) %>% 
+  ggplot(aes(int_rate)) +
+  geom_histogram()
+```
+
+```{r}
+EDA_data %>% 
+  ggplot(aes(loan_amnt)) +
+  geom_histogram()
+
+# Log-scaling this variable -> distribution is normalized
+EDA_data %>% 
+  ggplot(aes(log(loan_amnt))) +
+  geom_histogram()
+
+# Z-score scaling
+EDA_data %>% 
+  mutate(loan_amnt = (loan_amnt - mean(loan_amnt))/sd(loan_amnt)) %>% 
+  ggplot(aes(loan_amnt)) +
+  geom_histogram()
+```
+
+```{r}
+EDA_data %>% 
+  ggplot(aes(mort_acc)) +
+  geom_histogram()
+
+EDA_data %>%
+  mutate(mort_acc = as.factor(if_else(mort_acc > 5, 6, mort_acc))) %>% 
+  ggplot(aes(mort_acc)) +
+  geom_bar()
+```
+
+```{r}
+EDA_data %>% 
+  ggplot(aes(num_sats)) +
+  geom_histogram()
+
+# Scaling to [0,1]
+EDA_data %>% 
+  mutate(num_sats = (num_sats - min(num_sats))/(max(num_sats) - min(num_sats))) %>% 
+  ggplot(aes(num_sats)) +
+  geom_histogram()
+```
+
+```{r}
+EDA_data %>% 
+  ggplot(aes(num_tl_90g_dpd_24m)) +
+  geom_histogram()
+
+EDA_data %>%
+  mutate(num_tl_90g_dpd_24m = as.factor(if_else(num_tl_90g_dpd_24m > 0, 1, num_tl_90g_dpd_24m))) %>% 
+  ggplot(aes(num_tl_90g_dpd_24m)) +
+  geom_bar()
+```
+
+```{r}
+EDA_data %>% 
+  ggplot(aes(pub_rec_bankruptcies)) +
+  geom_histogram()
+
+EDA_data %>%
+  mutate(pub_rec_bankruptcies = as.factor(if_else(pub_rec_bankruptcies > 1, 2, pub_rec_bankruptcies))) %>% 
+  ggplot(aes(pub_rec_bankruptcies)) +
+  geom_bar()
+```
+
+```{r}
+EDA_data %>% 
+  ggplot(aes(purpose)) +
+  geom_bar()
+  
+purposes <- c("debt_consolidation", "credit_card", "home_improvement", "major_purchase")
+  
+EDA_data %>%
+  mutate(purpose = as.factor(if_else(purpose %in% purposes, purpose, as.character("Others")))) %>% 
+  ggplot(aes(purpose)) +
+  geom_bar()
+```
+
+```{r}
+EDA_data %>% 
+  ggplot(aes(tot_coll_amt)) +
+  geom_histogram()
+
+# Log-scaling this variable -> distribution is normalized
+EDA_data %>% 
+  ggplot(aes(log(tot_coll_amt))) +
+  geom_histogram()
+```
+
+```{r}
+EDA_data %>% 
+  ggplot(aes(tot_cur_bal)) +
+  geom_histogram()
+
+# Log-scaling this variable -> distribution is normalized
+EDA_data %>% 
+  ggplot(aes(log(tot_cur_bal))) +
+  geom_histogram()
+```
+
+```{r}
+EDA_data %>% 
+  ggplot(aes(total_rec_late_fee)) +
+  geom_histogram()
+
+EDA_data %>%
+  mutate(late = as.factor(if_else(total_rec_late_fee > 0, 1, total_rec_late_fee))) %>% 
+  ggplot(aes(late)) +
+  geom_bar()
+```
+
+#### `out_prncp_inv`: remaining loans
+```{r}
+EDA_data %>% 
+  ggplot(aes(out_prncp_inv)) +
+  geom_histogram()
+
+# Log-scaling this variable -> distribution is normalized
+EDA_data %>% 
+  ggplot(aes(log(out_prncp_inv))) +
   geom_histogram()
 ```
