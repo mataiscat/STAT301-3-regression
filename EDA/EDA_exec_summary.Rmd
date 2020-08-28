@@ -1,0 +1,115 @@
+---
+title: "EDA_exec_summary"
+author: "Junhua Tan"
+date: "8/28/2020"
+output: 
+  html_document:
+    keep_md: true
+---
+
+```{r, echo=FALSE}
+knitr::opts_chunk$set(
+  fig.path = "README_figs/README-"
+)
+```
+
+# Load Data and Check Co-linearity
+```{r, echo=FALSE, warning=FALSE}
+setwd("~/Documents/GitHub/STAT301-3-regression")
+source("EDA/EDA_scripts.R")
+
+# Load libraries
+library(ggpubr)
+```
+
+## Transforming Categorical Variables: `addr_states`
+
+For categorical predictors that has many categories but with vastly different frequencies such as `addr_states` can transformed to be more useful predictors by assigning categorical "outliers" as Out of Vocab (OOV) category. This way, the model would not waste time training on each rare categories separately.
+
+```{r Transforming Categorical Variables, echo=FALSE, warning=FALSE}
+original <- EDA_data %>% 
+  ggplot(aes(addr_state)) +
+  geom_bar()
+  
+states <- c("CA", "NY", "TX", "FL", "NJ", "IL", "MI")
+  
+transformed <- EDA_data %>%
+  mutate(addr_state = as.factor(if_else(addr_state %in% states, addr_state, as.character("Other States")))) %>% 
+  ggplot(aes(addr_state)) +
+  geom_bar()
+
+ggarrange(original, transformed,
+                    labels = c("Orginal", "Transformed"),
+                    ncol = 2, nrow = 1)
+```
+
+## Transforming Numerical Variables: `avg_cur_bal`
+
+For numerical variables that represent monetary values such as `annual_inc` and `avg_cur_bal`, for the average current balance of all accounts, the data is often highly skewed with extreme values. Here I will transform these numerical values by log-scaling such that the distribution of data is more normalized and the skewness of large values is removed.
+
+```{r Log-scaling Numerical Variables, echo=FALSE, warning=FALSE}
+original <- EDA_data %>% 
+  ggplot(aes(avg_cur_bal)) +
+  geom_histogram()
+
+# Log-scaling this variable -> distribution is normalized
+transformed <- EDA_data %>% 
+  mutate(annual_inc = ifelse(annual_inc == 0, 0, log(annual_inc))) %>% 
+  ggplot(aes(annual_inc)) +
+  geom_histogram()
+
+ggarrange(original, transformed,
+                    labels = c("Orginal", "Transformed"),
+                    ncol = 2, nrow = 1)
+```
+
+## Transforming Numerical Variables: `dti`
+
+Other numerical variables such as `dti` also contains outliers but the original distribution is much more normalized and values are less extreme. For these variables, I first apply z-score scaling to represents the number of standard deviations away from the mean. However, from the result shown, the extreme values have a sd of > 6. To compare with the clipping method, I arbitary set the maximum value of the variable to a more reasonable value such as 40 in this case. Then I scaled to range of [0,1] to compare the two transformations However, I chose to scale the variable using z-scores without clipping because I want to capture these feature values in models.
+
+```{r Z-score Scaling Numerical Variables, echo=FALSE, warning=FALSE}
+original <- EDA_data %>% 
+  ggplot(aes(dti)) +
+  geom_histogram()
+
+# Z-score scaling
+z_transformed <- EDA_data %>% 
+  mutate(dti = (dti - mean(dti))/sd(dti)) %>% 
+  ggplot(aes(dti)) +
+  geom_histogram()
+
+# Scaling to [0,1]
+clipped <- EDA_data %>% 
+  mutate(dti = ifelse(dti > 40, 40, dti),
+         dti = (dti - min(dti))/(max(dti) - min(dti))) %>% 
+  ggplot(aes(dti)) +
+  geom_histogram()
+
+ggarrange(original, 
+          ggarrange(z_transformed, clipped,
+                    labels = c("Z-Score Scaling", "Scaling to [0,1]"),
+                    ncol = 2),
+          labels = "Orginal",
+          nrow = 2)
+```
+
+## Transforming Numerical Variables: `delinq_2yrs`
+
+For other numerical variables that have many discrete numerical values such as `delinq_2yrs`, I would arbitary clipped the maximum value as 3, which in itself is a rare category, and assign values equal to or larger than 3 as 3+. Finally, I would turn this variable into ordered categorical variables for modeling.
+
+```{r Clipping Numerical Variables, echo=FALSE, warning=FALSE}
+original <- EDA_data %>% 
+  ggplot(aes(as_factor(delinq_2yrs))) +
+  geom_bar()
+
+# Clipping delinq_2yrs and assign values equal to or larger than 3 as 3+
+# Turn delinq_2yrs as ordered categorical variables
+transformed <- EDA_data %>%
+  mutate(delinq_2yrs = as.ordered(ifelse(delinq_2yrs > 2, "3+", delinq_2yrs))) %>% 
+  ggplot(aes(delinq_2yrs)) +
+  geom_bar()
+
+ggarrange(original, transformed,
+                    labels = c("Orginal", "Transformed"),
+                    ncol = 2, nrow = 1)
+```

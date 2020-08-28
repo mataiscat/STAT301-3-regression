@@ -14,7 +14,6 @@ library(tidyverse)
 library(onehot)
 library(lubridate)
 library(janitor)
-library(dataMaid)
 library(corrplot)
 library(dataMaid)
 
@@ -67,11 +66,6 @@ EDA_data %>%
   select_if(is.numeric) %>% 
   cor() %>% 
   corrplot()
-```
-
-```{r}
-# Make a codebook containing these variable description (already made)
-#makeCodebook(train, replace = TRUE)
 ```
 
 ### Target Variable
@@ -131,12 +125,19 @@ EDA_data %>%
 
 # Log-scaling this variable -> distribution is normalized
 EDA_data %>% 
-  ggplot(aes(log(annual_inc))) +
+  mutate(annual_inc = ifelse(annual_inc == 0, 0, log(annual_inc))) %>% 
+  ggplot(aes(annual_inc)) +
   geom_histogram()
 ```
 
 ```{r}
 EDA_data %>% 
+  ggplot(aes(avg_cur_bal)) +
+  geom_histogram()
+
+# Log-scaling
+EDA_data %>% 
+  mutate(avg_cur_bal = ifelse(avg_cur_bal == 0, 0, log(avg_cur_bal))) %>% 
   ggplot(aes(avg_cur_bal)) +
   geom_histogram()
 
