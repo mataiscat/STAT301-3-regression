@@ -16,8 +16,8 @@ model_performance <- tibble(nround = numeric(),
                             test_rmse = numeric())
 
 
-nrounds <- 400
-eta <- c(0.03, 0.05, 0.07, 0.1)
+nrounds <- 550
+eta <- c(0.03, 0.05, 0.07)
 subsample <- c(1/3, 0.5, 0.75)
 min_child_weight <- c(1, 2, 3, 4)
 max_depth <- c(4, 5, 6, 7)
@@ -48,10 +48,15 @@ for(et in eta) {
   }
 }
 
+model_performance %>% 
+  arrange(test_rmse)
+
+write_csv(model_performance, "model/XGBoost/model_performance.csv")
+
 # ETA
 # learning rate
 
-eta <- c(0.03, 0.05, 0.07, 0.1)
+eta <- c(0.01, 0.03, 0.05, 0.07, 0.1)
 eta_performance <- matrix(NA, nrounds, length(eta))
 
 for(i in 1:length(eta)) {
@@ -199,11 +204,11 @@ model_performance %>%
 
 # Training our model
 model <- xgboost(data = dtrain, # the data  
-                 nround = 400, # max number of boosting iterations,
-                 eta = 0.1,
+                 nround = 550, # max number of boosting iterations,
+                 eta = 0.05,
                  subsample = 0.50,
                  min_child_weight = 4,
-                 max_depth = 5,
+                 max_depth = 6,
                  objective = "reg:linear")  # the objective function
 
 # generate predictions for our held-out testing data
